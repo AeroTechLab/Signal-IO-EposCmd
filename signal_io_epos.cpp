@@ -40,23 +40,6 @@ typedef struct DeviceData
 }
 DeviceData;
 
-HANDLE VCS_OpenDevice( char*, char*, char*, char*, DWORD* );
-BOOL VCS_CloseDevice( HANDLE, DWORD* );
-BOOL VCS_GetProtocolStackSettings( HANDLE, DWORD*, DWORD*, DWORD* );
-BOOL VCS_SetProtocolStackSettings( HANDLE, DWORD, DWORD, DWORD* );
-BOOL VCS_GetPositionIs( HANDLE, WORD, long* , DWORD* );
-BOOL VCS_GetVelocityIs( HANDLE, WORD, long*, DWORD* );
-BOOL VCS_GetVelocityIsAveraged( HANDLE, WORD, long*, DWORD* );
-BOOL VCS_GetCurrentIs( HANDLE, WORD, short*, DWORD* );
-BOOL VCS_GetCurrentIsAveraged( HANDLE, WORD, short*, DWORD* );
-BOOL VCS_ActivatePositionMode( HANDLE, WORD, DWORD* );
-BOOL VCS_SetPositionMust( HANDLE, WORD, long, DWORD* );
-BOOL VCS_ActivateVelocityMode( HANDLE, WORD, DWORD* );
-BOOL VCS_SetVelocityMust( HANDLE, WORD, long, DWORD* );
-BOOL VCS_ActivateCurrentMode( HANDLE, WORD, DWORD* );
-BOOL VCS_SetCurrentMust( HANDLE, WORD, short, DWORD* );
-BOOL VCS_GetErrorInfo( DWORD, char*, WORD );
-
 void PrintError( DWORD errorCode )
 {
   char errorInfo[ ERROR_STRING_MAX_SIZE ];
@@ -128,7 +111,7 @@ size_t Read( long int deviceID, unsigned int channel, double* ref_value )
   
   DeviceData* device = (DeviceData*) deviceID;
   
-  long value;
+  int value = 0;
   DWORD errorCode;
   if( channel == 0 ) VCS_GetPositionIs( device->handle, device->nodeId, &value, &errorCode );
   else if( channel == 1 ) VCS_GetVelocityIs( device->handle, device->nodeId, &value, &errorCode );
