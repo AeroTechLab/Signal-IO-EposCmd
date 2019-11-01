@@ -50,13 +50,21 @@ void PrintError( DWORD errorCode )
 
 DECLARE_MODULE_INTERFACE( SIGNAL_IO_INTERFACE );
 
+// String on the form "<device>:<protocol>:<interface>:<port>:<node_id>:<baudrate>"
+// Configuration Options:
+// -Devices: EPOS, EPOS2, EPOS4
+// -Protocols: MAXON_RS232, MAXON SERIAL V2, CANopen
+// -Interfaces: RS232, USB, IXXAT_*, Kvaser_*, NI_*, Vector_*
+// -Ports: COM1, COM2, ... USB0, USB1, ... CAN0, CAN1, ...
+// -Node IDs: 1, 2, 3, 4, ...
+// -Baudrates: Interface dependent
 long int InitDevice( const char* configuration )
 {  
-  char* deviceName = strtok( (char*) configuration, " " );
-  char* protocolName = strtok( NULL, " " );
-  char* interfaceName = strtok( NULL, " " );
-  char* portName = strtok( NULL, " " );
-  unsigned short nodeId = (unsigned short) strtoul( strtok( NULL, " " ), NULL, 0 );
+  char* deviceName = strtok( (char*) configuration, ":" );
+  char* protocolName = strtok( NULL, ":" );
+  char* interfaceName = strtok( NULL, ":" );
+  char* portName = strtok( NULL, ":" );
+  unsigned short nodeId = (unsigned short) strtoul( strtok( NULL, ":" ), NULL, 0 );
   
   DWORD errorCode;
   HANDLE deviceHandle = VCS_OpenDevice( deviceName, protocolName, interfaceName, portName, &errorCode );
@@ -70,7 +78,7 @@ long int InitDevice( const char* configuration )
   unsigned int baudrate;
   if( VCS_GetProtocolStackSettings( deviceHandle, &baudrate, &timeout, &errorCode ) != 0 )
   {
-    baudrate = (unsigned int) strtoul( strtok( NULL, " " ), NULL, 0 );
+    baudrate = (unsigned int) strtoul( strtok( NULL, ":" ), NULL, 0 );
     if( VCS_SetProtocolStackSettings( deviceHandle, baudrate, timeout, &errorCode ) == 0 )
     {
       PrintError( errorCode );
