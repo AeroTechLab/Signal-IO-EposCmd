@@ -44,7 +44,7 @@ void PrintError( DWORD errorCode )
 {
   char errorInfo[ ERROR_STRING_MAX_SIZE ];
   VCS_GetErrorInfo( errorCode, errorInfo, ERROR_STRING_MAX_SIZE );
-  fprintf( stderr, "error: %s", errorInfo );
+  fprintf( stderr, "error: %s\n", errorInfo );
 }
 
 
@@ -65,6 +65,7 @@ long int InitDevice( const char* configuration )
   char* interfaceName = strtok( NULL, ":" );
   char* portName = strtok( NULL, ":" );
   unsigned short nodeId = (unsigned short) strtoul( strtok( NULL, ":" ), NULL, 0 );
+  unsigned int baudrate = (unsigned int) strtoul( strtok( NULL, ":" ), NULL, 0 );
   
   DWORD errorCode;
   HANDLE deviceHandle = VCS_OpenDevice( deviceName, protocolName, interfaceName, portName, &errorCode );
@@ -75,10 +76,9 @@ long int InitDevice( const char* configuration )
   }
   
   unsigned int timeout;
-  unsigned int baudrate;
-  if( VCS_GetProtocolStackSettings( deviceHandle, &baudrate, &timeout, &errorCode ) != 0 )
+  unsigned int defaultBaudrate;
+  if( VCS_GetProtocolStackSettings( deviceHandle, &defaultBaudrate, &timeout, &errorCode ) != 0 )
   {
-    baudrate = (unsigned int) strtoul( strtok( NULL, ":" ), NULL, 0 );
     if( VCS_SetProtocolStackSettings( deviceHandle, baudrate, timeout, &errorCode ) == 0 )
     {
       PrintError( errorCode );
