@@ -100,7 +100,7 @@ void EndDevice( long int deviceID )
   DeviceData* device = (DeviceData*) deviceID;
   
   DWORD errorCode;
-  if( VCS_CloseDevice( device->handle, &errorCode ) != 0 ) 
+  if( VCS_CloseDevice( device->handle, &errorCode ) == 0 ) 
     PrintError( errorCode );
   
   return;
@@ -119,11 +119,14 @@ size_t Read( long int deviceID, unsigned int channel, double* ref_value )
   
   DeviceData* device = (DeviceData*) deviceID;
   
-  int value = 0;
+  long value = 0;
+  BOOL status = 0;
   DWORD errorCode;
-  if( channel == 0 ) VCS_GetPositionIs( device->handle, device->nodeId, &value, &errorCode );
-  else if( channel == 1 ) VCS_GetVelocityIs( device->handle, device->nodeId, &value, &errorCode );
-  else if( channel == 2 ) VCS_GetCurrentIsAveraged( device->handle, device->nodeId, (short*) &value, &errorCode );
+  if( channel == 0 ) status = VCS_GetPositionIs( device->handle, device->nodeId, (int*) &value, &errorCode );
+  else if( channel == 1 ) status = VCS_GetVelocityIs( device->handle, device->nodeId, (int*) &value, &errorCode );
+  else if( channel == 2 ) status = VCS_GetCurrentIsAveraged( device->handle, device->nodeId, (short*) &value, &errorCode );
+  
+  if( status == 0 ) PrintError( errorCode );
   
   *ref_value = (double) value;
   
@@ -132,11 +135,30 @@ size_t Read( long int deviceID, unsigned int channel, double* ref_value )
 
 bool HasError( long int deviceID )
 {
+  if( deviceID == SIGNAL_IO_DEVICE_INVALID_ID ) return true;
+
+  DeviceData* device = (DeviceData*) deviceID;
+  
+  WORD state;
+  DWORD errorCode;
+  if( VCS_GetState( device->handle, device->nodeId, &state, &errorCode ) == 0 )
+    PrintError( errorCode );
+  
+  if( state == ST_FAULT ) return true;
+  
   return false;
 }
 
 void Reset( long int deviceID )
 {
+  if( deviceID == SIGNAL_IO_DEVICE_INVALID_ID ) return;
+
+  DeviceData* device = (DeviceData*) deviceID;
+  
+  DWORD errorCode;
+  if( VCS_ClearFault( device->handle, device->nodeId, &errorCode ) == 0 )
+    PrintError( errorCode );
+
   return;
 }
 
@@ -155,10 +177,13 @@ bool Write( long int deviceID, unsigned int channel, double value )
   
   DeviceData* device = (DeviceData*) deviceID;
   
+  BOOL status = 0;
   DWORD errorCode;
-  if( channel == 0 ) VCS_SetPositionMust( device->handle, device->nodeId, (long) value, &errorCode );
-  else if( channel == 1 ) VCS_SetVelocityMust( device->handle, device->nodeId, (long) value, &errorCode );
-  else if( channel == 2 ) VCS_SetCurrentMust( device->handle, device->nodeId, (short) value, &errorCode );
+  if( channel == 0 ) status = VCS_SetPositionMust( device->handle, device->nodeId, (long) value, &errorCode );
+  else if( channel == 1 ) status = VCS_SetVelocityMust( device->handle, device->nodeId, (long) value, &errorCode );
+  else if( channel == 2 ) status = VCS_SetCurrentMust( device->handle, device->nodeId, (short) value, &errorCode );
+
+  if( status == 0 ) PrintError( errorCode );
   
   return true;
 }
@@ -169,10 +194,32 @@ bool AcquireOutputChannel( long int deviceID, unsigned int channel )
   
   if( channel > 2 ) return false;
   
+  DeviceData* device = (DeviceData*) deviceID;
+
+  short mode = OMD_POSITION_MODE;
+  if( channel == 1 ) mode = OMD_VELOCITY_MODE;
+  if( channel == 2 ) mode = OMD_CURRENT_MODE;
+
+  DWORD errorCode;
+  if( VCS_SetEnableState( device->handle, device->nodeId, &errorCode ) == 0 )
+    PrintError( errorCode );
+  if( VCS_SetOperationMode( device->handle, device->nodeId, mode, &errorCode ) == 0 )
+    PrintError( errorCode );
+
   return true;
 }
 
 void ReleaseOutputChannel( long int deviceID, unsigned int channel )
 {
+  if( deviceID == SIGNAL_IO_DEVICE_INVALID_ID ) return;
+
+  if( channel > 2 ) return;
+
+  DeviceData* device = (DeviceData*) deviceID;
+
+  DWORD errorCode;
+  if( VCS_SetDisableState( device->handle, device->nodeId, &errorCode ) == 0 )
+    PrintError( errorCode );
+  
   return;
 } 
