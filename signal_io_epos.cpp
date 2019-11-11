@@ -119,16 +119,17 @@ size_t Read( long int deviceID, unsigned int channel, double* ref_value )
   
   DeviceData* device = (DeviceData*) deviceID;
   
-  long value = 0;
+  int iValue = 0;
+  short sValue = 0;
   BOOL status = 0;
   DWORD errorCode;
-  if( channel == 0 ) status = VCS_GetPositionIs( device->handle, device->nodeId, (int*) &value, &errorCode );
-  else if( channel == 1 ) status = VCS_GetVelocityIs( device->handle, device->nodeId, (int*) &value, &errorCode );
-  else if( channel == 2 ) status = VCS_GetCurrentIsAveraged( device->handle, device->nodeId, (short*) &value, &errorCode );
+  if( channel == 0 ) status = VCS_GetPositionIs( device->handle, device->nodeId, &iValue, &errorCode );
+  else if( channel == 1 ) status = VCS_GetVelocityIs( device->handle, device->nodeId, &iValue, &errorCode );
+  else if( channel == 2 ) status = VCS_GetCurrentIsAveraged( device->handle, device->nodeId, &sValue, &errorCode );
   
   if( status == 0 ) PrintError( errorCode );
   
-  *ref_value = (double) value;
+  *ref_value = ( channel == 2 ) ? (double) sValue : (double) iValue;
   
   return 1;
 }
@@ -199,7 +200,7 @@ bool AcquireOutputChannel( long int deviceID, unsigned int channel )
   short mode = OMD_POSITION_MODE;
   if( channel == 1 ) mode = OMD_VELOCITY_MODE;
   if( channel == 2 ) mode = OMD_CURRENT_MODE;
-
+  
   DWORD errorCode;
   if( VCS_SetEnableState( device->handle, device->nodeId, &errorCode ) == 0 )
     PrintError( errorCode );
