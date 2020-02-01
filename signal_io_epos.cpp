@@ -26,6 +26,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#include <list>
+#include <thread>
+#include <chrono>
+
 #define ERROR_STRING_MAX_SIZE 128
 
 typedef void* HANDLE;
@@ -37,8 +41,16 @@ typedef struct DeviceData
 {
   HANDLE handle;
   WORD nodeId;
+  double inputValues[ 3 ];
+  double outputValues[ 3 ];
+  BOOL readStatus, writeStatus;
+  DWORD readErrorCode, writeErrorCode;
 }
 DeviceData;
+
+std::thread readingThread;
+std::list<DeviceData*> runningDevices;
+volatile bool isRunning = false;
 
 void PrintError( DWORD errorCode )
 {
@@ -46,6 +58,8 @@ void PrintError( DWORD errorCode )
   VCS_GetErrorInfo( errorCode, errorInfo, ERROR_STRING_MAX_SIZE );
   fprintf( stderr, "error: %s\n", errorInfo );
 }
+
+static void AsyncTransfer( void );
 
 
 DECLARE_MODULE_INTERFACE( SIGNAL_IO_INTERFACE );
@@ -86,9 +100,12 @@ long int InitDevice( const char* configuration )
     }
   }
   
-  DeviceData* newDevice = (DeviceData*) malloc( sizeof(DeviceData) );
+  DeviceData* newDevice = new DeviceData;
   newDevice->handle = deviceHandle;
   newDevice->nodeId = nodeId;
+  
+  if( runningDevices.empty() ) readingThread = std::thread( AsyncTransfer );
+  runningDevices.push_back( newDevice );
   
   return (long int) newDevice;
 }
@@ -102,6 +119,16 @@ void EndDevice( long int deviceID )
   DWORD errorCode;
   if( VCS_CloseDevice( device->handle, &errorCode ) == 0 ) 
     PrintError( errorCode );
+  
+  runningDevices.remove( device );
+  
+  if( runningDevices.empty() )
+  {
+    isRunning = false;
+    readingThread.join();
+  }
+  
+  delete device;
   
   return;
 }
@@ -119,17 +146,13 @@ size_t Read( long int deviceID, unsigned int channel, double* ref_value )
   
   DeviceData* device = (DeviceData*) deviceID;
   
-  int iValue = 0;
-  short sValue = 0;
-  BOOL status = 0;
-  DWORD errorCode;
-  if( channel == 0 ) status = VCS_GetPositionIs( device->handle, device->nodeId, &iValue, &errorCode );
-  else if( channel == 1 ) status = VCS_GetVelocityIs( device->handle, device->nodeId, &iValue, &errorCode );
-  else if( channel == 2 ) status = VCS_GetCurrentIsAveraged( device->handle, device->nodeId, &sValue, &errorCode );
+  if( device->readStatus == 0 ) 
+  {
+    PrintError( device->readErrorCode );
+    return 0;
+  }
   
-  if( status == 0 ) PrintError( errorCode );
-  
-  *ref_value = ( channel == 2 ) ? (double) sValue : (double) iValue;
+  *ref_value = device->inputValues[ channel ];
   
   return 1;
 }
@@ -178,13 +201,13 @@ bool Write( long int deviceID, unsigned int channel, double value )
   
   DeviceData* device = (DeviceData*) deviceID;
   
-  BOOL status = 0;
-  DWORD errorCode;
-  if( channel == 0 ) status = VCS_SetPositionMust( device->handle, device->nodeId, (long) value, &errorCode );
-  else if( channel == 1 ) status = VCS_SetVelocityMust( device->handle, device->nodeId, (long) value, &errorCode );
-  else if( channel == 2 ) status = VCS_SetCurrentMust( device->handle, device->nodeId, (short) value, &errorCode );
+  device->outputValues[ channel ] = value;
 
-  if( status == 0 ) PrintError( errorCode );
+  if( device->writeStatus == 0 ) 
+  {
+    PrintError( device->writeErrorCode );
+    return false;
+  }
   
   return true;
 }
@@ -224,3 +247,35 @@ void ReleaseOutputChannel( long int deviceID, unsigned int channel )
   
   return;
 } 
+
+static void AsyncTransfer( void )
+{  
+  int iValue = 0;
+  short sValue = 0;
+  
+  isRunning = true;
+  
+  while( isRunning )
+  {
+    for( DeviceData* device : runningDevices )
+    {
+      device->readStatus = VCS_GetPositionIs( device->handle, device->nodeId, &iValue, &(device->readErrorCode) );
+      device->inputValues[ 0 ] = (double) iValue;
+      device->readStatus = VCS_GetVelocityIs( device->handle, device->nodeId, &iValue, &(device->readErrorCode) );
+      device->inputValues[ 1 ] = (double) iValue;
+      device->readStatus = VCS_GetCurrentIsAveraged( device->handle, device->nodeId, &sValue, &(device->readErrorCode) );
+      device->inputValues[ 2 ] = (double) sValue;
+      
+      iValue = (long) device->outputValues[ 0 ];
+      device->writeStatus = VCS_SetPositionMust( device->handle, device->nodeId, iValue, &(device->writeErrorCode) );
+      iValue = (long) device->outputValues[ 1 ];
+      device->writeStatus = VCS_SetVelocityMust( device->handle, device->nodeId, iValue, &(device->writeErrorCode) );
+      sValue = (short) device->outputValues[ 2 ];
+      device->writeStatus = VCS_SetCurrentMust( device->handle, device->nodeId, sValue, &(device->writeErrorCode) );
+    }
+    
+    std::this_thread::sleep_for( std::chrono::milliseconds( 5 ) );
+  }
+  
+  return;
+}
