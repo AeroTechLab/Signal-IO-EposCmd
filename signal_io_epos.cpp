@@ -266,6 +266,8 @@ static void AsyncTransfer( void )
       device->readStatus = VCS_GetCurrentIsAveraged( device->handle, device->nodeId, &sValue, &(device->readErrorCode) );
       device->inputValues[ 2 ] = (double) sValue;
       
+      if( device->readStatus == 0 ) VCS_ClearFault( device->handle, device->nodeId, &(device->readErrorCode) );
+      
       iValue = (long) device->outputValues[ 0 ];
       device->writeStatus = VCS_SetPositionMust( device->handle, device->nodeId, iValue, &(device->writeErrorCode) );
       iValue = (long) device->outputValues[ 1 ];
