@@ -201,13 +201,11 @@ bool Write( long int deviceID, unsigned int channel, double value )
   DeviceData* device = (DeviceData*) deviceID;
   
   //device->outputValues[ channel ] = value;
-  int iValue = 0;
-  short sValue = 0;
   BOOL status = 0;
   DWORD errorCode;
-  if( channel == 0 ) status = VCS_GetPositionIs( device->handle, device->nodeId, &iValue, &errorCode );
-  else if( channel == 1 ) status = VCS_GetVelocityIs( device->handle, device->nodeId, &iValue, &errorCode );
-  else if( channel == 2 ) status = VCS_GetCurrentIsAveraged( device->handle, device->nodeId, &sValue, &errorCode );
+  if( channel == 0 ) status = VCS_SetPositionMust( device->handle, device->nodeId, (long) value, &errorCode );
+  else if( channel == 1 ) status = VCS_SetVelocityMust( device->handle, device->nodeId, (long) value, &errorCode );
+  else if( channel == 2 ) status = VCS_SetCurrentMust( device->handle, device->nodeId, (short) value, &errorCode );
 
   if( /*device->writeStatus*/status == 0 ) 
   {
