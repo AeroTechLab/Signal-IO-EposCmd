@@ -200,11 +200,19 @@ bool Write( long int deviceID, unsigned int channel, double value )
   
   DeviceData* device = (DeviceData*) deviceID;
   
-  device->outputValues[ channel ] = value;
+  //device->outputValues[ channel ] = value;
 
-  if( device->writeStatus == 0 ) 
+  BOOL status = 0;
+  DWORD errorCode;
+  if( channel == 0 ) status = VCS_SetPositionMust( device->handle, device->nodeId, (long) value, &errorCode );
+  else if( channel == 1 ) status = VCS_SetVelocityMust( device->handle, device->nodeId, (long) value, &errorCode );
+  else if( channel == 2 ) status = VCS_SetCurrentMust( device->handle, device->nodeId, (short) value, &errorCode );
+
+  //if( device->writeStatus == 0 ) 
+  if( status == 0 )
   {
-    PrintError( device->writeErrorCode );
+    //PrintError( device->writeErrorCode );
+    PrintError( errorCode );
     return false;
   }
   
@@ -267,12 +275,12 @@ static void AsyncTransfer( void )
       
       if( device->readStatus == 0 ) VCS_ClearFault( device->handle, device->nodeId, &(device->readErrorCode) );
       
-      iValue = (long) device->outputValues[ 0 ];
-      device->writeStatus = VCS_SetPositionMust( device->handle, device->nodeId, iValue, &(device->writeErrorCode) );
-      iValue = (long) device->outputValues[ 1 ];
-      device->writeStatus = VCS_SetVelocityMust( device->handle, device->nodeId, iValue, &(device->writeErrorCode) );
-      sValue = (short) device->outputValues[ 2 ];
-      device->writeStatus = VCS_SetCurrentMust( device->handle, device->nodeId, sValue, &(device->writeErrorCode) );
+      //iValue = (long) device->outputValues[ 0 ];
+      //device->writeStatus = VCS_SetPositionMust( device->handle, device->nodeId, iValue, &(device->writeErrorCode) );
+      //iValue = (long) device->outputValues[ 1 ];
+      //device->writeStatus = VCS_SetVelocityMust( device->handle, device->nodeId, iValue, &(device->writeErrorCode) );
+      //sValue = (short) device->outputValues[ 2 ];
+      //device->writeStatus = VCS_SetCurrentMust( device->handle, device->nodeId, sValue, &(device->writeErrorCode) );
     }
   }
   
